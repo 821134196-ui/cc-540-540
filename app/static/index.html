@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>家长会预约系统</title>
+<link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+
+<!-- 登录 -->
+<section id="login-view" class="login-wrap" hidden>
+  <form id="login-form" class="card login-card">
+    <h1>家长会预约系统</h1>
+    <p class="muted">班主任发布预约窗口 · 线下 / 视频会谈 · 纪要与后续待办</p>
+    <label>账号
+      <input name="login" autocomplete="username" required placeholder="如 ma / wang / admin">
+    </label>
+    <label>密码
+      <input name="password" type="password" autocomplete="current-password"
+             required placeholder="演示密码：123456">
+    </label>
+    <button class="btn primary" type="submit">登录</button>
+    <p class="error" id="login-error"></p>
+    <details class="muted small">
+      <summary>演示账号</summary>
+      admin 管理员 · wang 王老师 · li 李老师（请假）<br>
+      ma/ba 小明妈妈/爸爸 · hongma 小红妈妈 · old 小红旧账号（已撤销授权）<br>
+      zhang 张伟：三(1)教师 + 三(2)家长
+    </details>
+  </form>
+</section>
+
+<!-- 主界面 -->
+<div id="app-view" hidden>
+  <header class="topbar">
+    <div class="brand">家长会预约</div>
+    <nav class="tabs" id="tabs">
+      <button data-tab="slots" class="tab active">可选时段</button>
+      <button data-tab="bookings" class="tab">我的预约 / 纪要</button>
+      <button data-tab="reschedules" class="tab">改期队列</button>
+      <button data-tab="teacher" class="tab teacher-only">教师日历</button>
+      <button data-tab="admin" class="tab admin-only">管理</button>
+    </nav>
+    <div class="userbox">
+      <span id="user-name"></span>
+      <button class="btn ghost small" id="logout-btn">退出</button>
+    </div>
+  </header>
+
+  <main class="container">
+    <div class="toolbar">
+      <label>家长会轮次
+        <select id="round-select"></select>
+      </label>
+      <span id="window-hint" class="muted small"></span>
+    </div>
+    <p class="error" id="global-error"></p>
+
+    <!-- 可选时段 -->
+    <section id="tab-slots" class="tab-panel">
+      <div class="grid2">
+        <div class="card">
+          <h2>可选时段（家长端仅展示可约时段）</h2>
+          <div class="table-wrap">
+            <table id="slots-table">
+              <thead><tr><th>教师</th><th>开始</th><th>结束</th><th>操作</th></tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+        <form class="card" id="booking-form">
+          <h2>提交预约</h2>
+          <label>学生
+            <select name="student_id" id="booking-student"></select>
+          </label>
+          <label>意向时段
+            <select name="slot_id" id="booking-slot">
+              <option value="">不指定（由教师分配）</option>
+            </select>
+          </label>
+          <label>会谈方式
+            <select name="mode">
+              <option value="video">视频会谈</option>
+              <option value="offline">线下面谈</option>
+            </select>
+          </label>
+          <label>想讨论的事项
+            <textarea name="topics" rows="3" placeholder="如：阅读习惯、口算练习…"></textarea>
+          </label>
+          <button class="btn primary" type="submit">提交预约申请</button>
+          <p class="ok" id="booking-ok"></p>
+        </form>
+      </div>
+
+      <form class="card teacher-only" id="publish-form">
+        <h2>教师发布时段</h2>
+        <p class="muted small">每行一个：<code>YYYY-MM-DDTHH:MM 时长分钟</code>，
+          例如 <code>2026-10-10T11:00 20</code></p>
+        <textarea name="lines" rows="3" placeholder="2026-10-10T11:00 20"></textarea>
+        <button class="btn" type="submit">批量发布</button>
+      </form>
+    </section>
+
+    <!-- 我的预约 -->
+    <section id="tab-bookings" class="tab-panel" hidden>
+      <div class="card">
+        <h2>我的预约与自己孩子的纪要</h2>
+        <div id="my-bookings" class="cards-list"></div>
+      </div>
+    </section>
+
+    <!-- 改期队列 -->
+    <section id="tab-reschedules" class="tab-panel" hidden>
+      <div class="card">
+        <h2>改期队列</h2>
+        <p class="muted small">含家长临时改期与教师请假导致的被动改期。</p>
+        <div id="reschedule-list" class="cards-list"></div>
+      </div>
+    </section>
+
+    <!-- 教师日历 -->
+    <section id="tab-teacher" class="tab-panel teacher-only" hidden>
+      <div class="card">
+        <h2>班级日历（按教师与时间排列）</h2>
+        <div id="calendar"></div>
+      </div>
+      <form class="card" id="leave-form">
+        <h2>教师请假登记</h2>
+        <label>请假教师
+          <select name="teacher_id" id="leave-teacher"></select>
+        </label>
+        <label>原因
+          <input name="reason" required placeholder="如：外出教研，全天请假">
+        </label>
+        <button class="btn warn" type="submit">登记请假并取消其未来时段</button>
+        <p class="muted small">受影响的已确认预约会自动进入改期队列，视频链接作废。</p>
+      </form>
+    </section>
+
+    <!-- 管理 -->
+    <section id="tab-admin" class="tab-panel admin-only" hidden>
+      <div class="grid2">
+        <form class="card" id="revoke-form">
+          <h2>撤销监护授权</h2>
+          <label>学生
+            <select name="student_id" id="revoke-student"></select>
+          </label>
+          <label>监护人账号
+            <select name="guardian_id" id="revoke-guardian"></select>
+          </label>
+          <button class="btn warn" type="submit">撤销授权</button>
+          <p class="muted small">撤销后旧账号立即不能再查看该生的任何纪要与附件。</p>
+        </form>
+        <div class="card">
+          <h2>访问记录</h2>
+          <div class="table-wrap">
+            <table id="access-table">
+              <thead><tr><th>时间</th><th>用户</th><th>动作</th><th>结果</th></tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="card">
+          <h2>模拟通知</h2>
+          <div id="notifications" class="cards-list"></div>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<dialog id="minutes-dialog">
+  <form method="dialog" class="dlg">
+    <h3 id="minutes-title">会谈纪要</h3>
+    <div id="minutes-body"></div>
+    <menu>
+      <button class="btn" value="close">关闭</button>
+      <button class="btn primary teacher-edit" id="save-minutes" value="save">保存修改</button>
+    </menu>
+  </form>
+</dialog>
+
+<dialog id="complete-dialog">
+  <form id="complete-form" method="dialog" class="dlg">
+    <h3>记录会谈纪要</h3>
+    <input type="hidden" name="booking_id">
+    <label>结论摘要
+      <textarea name="summary" rows="3" required></textarea>
+    </label>
+    <label class="inline"><input type="checkbox" name="overtime"> 本次会谈超时</label>
+    <h4>后续待办（负责人与期限必填）</h4>
+    <div id="action-items-edit"></div>
+    <button type="button" class="btn small" id="add-action">+ 添加待办</button>
+    <label>虚构附件名（逗号分隔）
+      <input name="attachments" placeholder="如 作业样本.txt, 课堂照片.txt">
+    </label>
+    <menu>
+      <button class="btn" value="cancel">取消</button>
+      <button class="btn primary" id="submit-complete" value="submit">结束会谈并保存</button>
+    </menu>
+  </form>
+</dialog>
+
+<script src="/static/app.js"></script>
+</body>
+</html>
